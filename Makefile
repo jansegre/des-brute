@@ -1,9 +1,13 @@
 #CC = gcc
 #CFLAGS = -O3 -DUSE_TOMCRYPT -Isrc
-CFLAGS = -O3 -DUSE_OPENSSL -Isrc -Wno-deprecated-declarations
+CFLAGS = -O3 -DUSE_OPENSSL -Isrc
 #LIBS = -ltomcrypt
 LIBS = -lcrypto
-DEPS =
+MPILIBS = -lmpi
+
+ifeq ($(PE_ENV),CRAY)
+include cray.mk
+endif
 
 HEADERS = brute.h
 SOURCES = brute.c
@@ -28,7 +32,7 @@ $(EXEC): $(OBJ) $(OBJDIR)/main.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 $(EXEC)_mpi: $(OBJ) $(OBJDIR)/mpi_main.o
-	$(CC) -o $@ $^ $(CFLAGS) $(LIBS) -lmpi
+	$(CC) -o $@ $^ $(CFLAGS) $(LIBS) $(MPILIBS)
 
 .PHONY: run
 run: $(EXEC)
