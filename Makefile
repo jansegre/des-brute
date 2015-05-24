@@ -4,7 +4,7 @@ CFLAGS = -O2 -DUSE_OPENSSL -Isrc -g -std=gnu99
 #LIBS = -ltomcrypt
 LIBS = -lcrypto
 MPILIBS = -lmpi
-BUILD_MPI = 0
+BUILD_MPI = 1
 
 HEADERS = brute.h util.h
 SOURCES = brute.c

@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <inttypes.h>
 #ifdef USE_TOMCRYPT
 #include <tomcrypt.h>
 #elif USE_OPENSSL
@@ -36,10 +37,10 @@ int brute_init(const uint8_t *_plaintext, const uint8_t *_ciphertext, size_t _by
   }
 }
 
-int64_t brute_search(uint64_t key_from, uint64_t key_to, uint64_t *keys_out) {
-  uint64_t *keys_start = keys_out;
+int64_t brute_search(const uint64_t key_from, const uint64_t key_to, uint64_t *keys_out) {
+  const uint64_t *keys_start = keys_out;
 
-  for (uint64_t key = key_from; !halt && key < key_to; key++) {
+  for (uint64_t key = key_from; key < key_to; key++) {
     unsigned char key_bytes[8];
     unsigned char local_plaintext[MAX_SIZE];
 
@@ -60,13 +61,25 @@ int64_t brute_search(uint64_t key_from, uint64_t key_to, uint64_t *keys_out) {
 #endif
 
     // XXX: this is where an heuristics would kick in, to evaluate if local_plaintext is a possible plaintext message
-    if (!memcmp(local_plaintext, plaintext, byte_length))
+    if (memcmp(local_plaintext, plaintext, byte_length) == 0) {
       *(keys_out++) = key;
+
+      if (keys_out - keys_start >= MAX_KEYS) {
+        fprintf(stderr, "\rWARN: No more space for new keys.\n");
+        break;
+      }
+    }
+
+    if (halt) {
+      float percent = 100.f * (key - key_from) / (key_to - key_from);
+      fprintf(stderr, "\rWARN: Halted search at %016"PRIx64": %6.2f%% of [%016"PRIx64", %016"PRIx64").\n", key, percent, key_from, key_to);
+      break;
+    }
   }
 
   return keys_out - keys_start;
 }
 
 void brute_halt(void) {
-  halt = 0;
+  halt = 1;
 }
