@@ -16,52 +16,57 @@
 
 #include "brute.h"
 
-unsigned char plain_text[MAX_SIZE] = {};
-unsigned char encoded_text[MAX_SIZE] = {};
-size_t text_size = 0;
-int halt = 0;
-
-/// Increments a byte vector, a[0] is the most significant byte, a[len-1] is the least
-void incr(unsigned char *a, size_t len) {
-  while (len--) if (++a[len]) break;
-}
-
-/// Searches for a key in the space [from, to)
-/// If there's a match, key is written and 1 is returned, 0 otherwise
-int search(const unsigned char *from, const unsigned char *to, unsigned char *key_out) {
-  unsigned char key_now[8];
-  unsigned char pt[MAX_SIZE];
-  memcpy(key_now, from, 8);
-  while (!halt && memcmp(key_now, to, 8) < 0) {
-#ifdef USE_TOMCRYPT
-    symmetric_key key;
-    des_setup(key_now, 8, 0, &key);
-    des_ecb_decrypt(encoded_text, pt, &key);
-    des_done(&key);
-#elif USE_OPENSSL
-    DES_cblock key;
-    memcpy(key, key_now, 8);
-    DES_key_schedule keysched;
-    DES_set_key(&key, &keysched);
-    DES_ecb_encrypt((DES_cblock *)encoded_text, (DES_cblock *)pt, &keysched, DES_DECRYPT);
+#ifndef MAX_SIZE
+#define MAX_SIZE 8
 #endif
-    // XXX: this is where an heuristics would kick in, to evaluate if pt is a plain_text
-    if (!memcmp(pt, plain_text, text_size)) {
-      memcpy(key_out, key_now, 8);
-      return 1;
-    }
-    incr(key_now, 8);
+
+static uint8_t plaintext[MAX_SIZE] = {};
+static uint8_t ciphertext[MAX_SIZE] = {};
+static size_t byte_length = 0;
+static int halt = 0;
+
+int brute_init(const uint8_t *_plaintext, const uint8_t *_ciphertext, size_t _byte_length) {
+  if (byte_length <= MAX_SIZE) {
+    byte_length = _byte_length;
+    memcpy(plaintext, _plaintext, byte_length);
+    memcpy(ciphertext, _ciphertext, byte_length);
+    return 1;
+  } else {
+    return 0;
   }
-  return 0;
 }
 
-void printstr(unsigned char *str, int len) {
-  int i;
-  //printf("ascii: %s\n", str);
-  printf("hex: ");
-  for (i = 0; i < len; i++) {
-    unsigned char c = str[i];
-    printf("%02x", c);
+int64_t brute_search(uint64_t key_from, uint64_t key_to, uint64_t *keys_out) {
+  uint64_t *keys_start = keys_out;
+
+  for (uint64_t key = key_from; !halt && key < key_to; key++) {
+    unsigned char key_bytes[8];
+    unsigned char local_plaintext[MAX_SIZE];
+
+    // transform key to bytes, because we cannot rely on endianess
+    for (int i = 0; i < 8; i++) {
+      key_bytes[7 - i] = (key >> (i * 8)) & 0xff;
+    }
+
+#ifdef USE_TOMCRYPT
+    symmetric_key k;
+    des_setup(key_bytes, 8, 0, &k);
+    des_ecb_decrypt(ciphertext, local_plaintext, &k);
+    des_done(&k);
+#elif USE_OPENSSL
+    DES_key_schedule k;
+    DES_set_key((const_DES_cblock *)key_bytes, &k);
+    DES_ecb_encrypt((DES_cblock *)ciphertext, (DES_cblock *)local_plaintext, &k, DES_DECRYPT);
+#endif
+
+    // XXX: this is where an heuristics would kick in, to evaluate if local_plaintext is a possible plaintext message
+    if (!memcmp(local_plaintext, plaintext, byte_length))
+      *(keys_out++) = key;
   }
-  printf("\n");
+
+  return keys_out - keys_start;
+}
+
+void brute_halt(void) {
+  halt = 0;
 }

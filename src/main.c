@@ -3,55 +3,45 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
 
 #include <string.h>
 #include <stdio.h>
+#include <inttypes.h>
+
 #include "brute.h"
+#include "util.h"
 
 int main(int argc, char** argv) {
-  unsigned char key[8];
+  uint64_t keys[256]; // = 0x3b3898371520f75e;
 #if 0
-  unsigned char from_key[8] = {0x3b, 0x38, 0x98, 0x37, 0x15, 0x20, 0x00, 0x00};
-  unsigned char to_key[8] = {0x3b, 0x38, 0x98, 0x37, 0x15, 0x21, 0x00, 0x00};
+  uint64_t key_from      = 0x3b38983715200000;
+  uint64_t key_to        = 0x3b38983715210000;
 #else
-  unsigned char from_key[8] = {0x3b, 0x38, 0x98, 0x37, 0x15, 0x00, 0x00, 0x00};
-  unsigned char to_key[8] = {0x3b, 0x38, 0x98, 0x37, 0x16, 0x00, 0x00, 0x00};
+  uint64_t key_from     = 0x3b38983710000000;
+  uint64_t key_to       = 0x3b38983800000000;
 #endif
 
-  unsigned char example_pt[] = {0x12, 0x34, 0x12, 0x34, 0x12, 0x34, 0x12, 0x34};
-  unsigned char example_et[] = {0xe5, 0x6e, 0x42, 0x7d, 0x61, 0x73, 0x00, 0x01};
+  uint64_t _pt = 0x1234123412341234;
+  uint64_t _ct = 0xe56e427d61730001;
+  uint8_t pt[8], ct[8];
+  to_bytes(_pt, pt);
+  to_bytes(_ct, ct);
 
-  text_size = 8;
-  memcpy(plain_text, example_pt, 8);
-  memcpy(encoded_text, example_et, 8);
-
-#if 0
+  // the search
   {
-    unsigned char real_key[8] = {0x3b, 0x38, 0x98, 0x37, 0x15, 0x20, 0xf7, 0x5e};
-    symmetric_key skey;
-    unsigned char my_pt[MAX_SIZE];
-    des_setup(real_key, 8, 0, &skey);
-    des_ecb_decrypt(encoded_text, my_pt, &skey);
-    des_done(&skey);
-    printstr(my_pt, 8);
-  }
-#endif
+    int matches;
 
-#if 1
-  if (search(from_key, to_key, key)) {
-    printf("key found\n");
-    printstr(key, 8);
-  } else {
-    printf("not found\n");
-  }
-#endif
+    matches = brute_search(key_from, key_to, keys);
 
-#if 0
-  for (int i = 0; i < 500; i++) {
-    printstr(from_key, 8);
-    incr(from_key, 8);
+    if (matches > 0) {
+      printf("matches:\n");
+      for (int i = 0; i < matches; i++)
+        printf("%016"PRIx64"\n", keys[i]);
+    } else {
+      printf("no match\n");
+    }
   }
-#endif
 
   return 0;
 }
