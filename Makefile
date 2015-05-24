@@ -1,6 +1,6 @@
 #CC = gcc
 #CFLAGS = -O3 -DUSE_TOMCRYPT -Isrc
-CFLAGS = -O2 -DUSE_OPENSSL -Isrc -g -std=gnu99
+CFLAGS = -O3 -DUSE_OPENSSL -Isrc
 #LIBS = -ltomcrypt
 LIBS = -lcrypto
 MPILIBS = -lmpi

@@ -1,10 +1,9 @@
 #!/bin/ksh
 #PBS -j oe
-#PBS -l select=1:ncpus=2:mpiprocs=2
+#PBS -l select=2:ncpus=16:mpiprocs=16
 #PBS -l walltime=00:30:00
 
-echo des-brute started
-date
+echo "### des-brute started (`date`) ###"
 cd $PBS_O_WORKDIR
-aprun -n2 ./brute_mpi
-echo des-brute ended
+aprun -n16 ./brute_mpi
+echo "### des-brute ended   (`date`) ###"

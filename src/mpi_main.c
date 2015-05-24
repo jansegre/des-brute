@@ -10,7 +10,6 @@
 #include <signal.h>
 #undef _XOPEN_SOURCE
 #include <string.h>
-#include <stdio.h>
 #include <inttypes.h>
 #include <mpi.h>
 
@@ -19,12 +18,6 @@
 
 void sigint_handler(int sig) {
   brute_halt();
-}
-
-void print_hex_text(const uint8_t *text, size_t size) {
-  for (int i = 0; i < size; i++) {
-    printf("%02x", text[i]);
-  }
 }
 
 int main(int argc, char** argv) {
@@ -75,8 +68,13 @@ int main(int argc, char** argv) {
     printf("Ciphertext: ");
     print_hex_text(ciphertext, text_size);
     puts("");
-    if (world_size > 1)
-      printf("[%016"PRIx64", %016"PRIx64") search space splitted on %i processor(s):\n", key_from, key_to, world_size);
+    if (world_size > 1) {
+      double bits = log2((double)(key_to - key_from));
+      printf("[%016"PRIx64", %016"PRIx64") search space (", key_from, key_to);
+      if (is2pow(key_to - key_from)) printf("%.0lfbits", bits);
+      else printf("~%.1lfbits", bits);
+      printf(") splitted on %i processor(s):\n", world_size);
+    }
   }
 
   uint64_t key_slice = (key_to - key_from) / world_size;
@@ -89,45 +87,40 @@ int main(int argc, char** argv) {
   MPI_Barrier(MPI_COMM_WORLD);
   printf("[%016"PRIx64", %016"PRIx64") search space on %s %i\n", my_key_from, my_key_to, processor_name, world_rank);
 
-  // the search
-  {
-    double total_time = 0.0;
-    int matches;
+  // Start timing
+  MPI_Barrier(MPI_COMM_WORLD);
+  double total_time = -MPI_Wtime();
 
-    // start timing
-    MPI_Barrier(MPI_COMM_WORLD);
-    total_time -= MPI_Wtime();
+  // Local search, **this is the heavy part**
+  int matches = brute_search(my_key_from, my_key_to, keys);
 
-    matches = brute_search(my_key_from, my_key_to, keys);
+  // End timing
+  MPI_Barrier(MPI_COMM_WORLD);
+  total_time += MPI_Wtime();
 
-    // end timing
-    MPI_Barrier(MPI_COMM_WORLD);
-    total_time += MPI_Wtime();
-    printf("Total time: %lf seconds on %s %i\n", total_time, processor_name, world_rank);
-
-    MPI_Barrier(MPI_COMM_WORLD);
-    int total_matches = matches;
-    if (world_rank == 0) {
-      for (int i = 1; i < world_size; i++) {
-        int other_matches = 0;
-        MPI_Recv(&other_matches, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        total_matches += other_matches;
-      }
-    } else {
-      MPI_Send(&matches, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+  // Count all matches
+  MPI_Barrier(MPI_COMM_WORLD);
+  int total_matches = matches;
+  if (world_rank == 0) {
+    for (int i = 1; i < world_size; i++) {
+      int other_matches = 0;
+      MPI_Recv(&other_matches, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+      total_matches += other_matches;
     }
-    if (world_rank == 0) {
-      switch (total_matches) {
-        case 0: printf("No matches.\n"); break;
-        case 1: printf("1 match:\n"); break;
-        default: printf("%i matches:\n", total_matches); break;
-      }
+  } else {
+    MPI_Send(&matches, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+  }
+  if (world_rank == 0) {
+    switch (total_matches) {
+      case 0: printf("No matches.\n"); break;
+      case 1: printf("1 match in %lf seconds:\n", total_time); break;
+      default: printf("%i matches in %lf seconds:\n", total_matches, total_time); break;
     }
+  }
 
-    MPI_Barrier(MPI_COMM_WORLD);
-    //printf("DEBUG: %i matches on %s %i\n", matches, processor_name, world_rank);
-    for (int i = 0; i < matches; i++)
-      printf("%016"PRIx64"\n", keys[i]);
+  MPI_Barrier(MPI_COMM_WORLD);
+  for (int i = 0; i < matches; i++) {
+    printf("%016"PRIx64"\n", keys[i]);
   }
 
   // Finalize the MPI environment.
