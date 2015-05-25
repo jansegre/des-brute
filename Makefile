@@ -48,8 +48,11 @@ clean::
 $(EXEC_MPI): $(OBJ) $(OBJDIR)/mpi_main.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS) $(MPILIBS)
 
+EXEC_PBS = des-brute.pbs
+
 push: $(EXEC_MPI)
-	qsub cray_run.pbs
+	qsub -v PLAINTEXT="1234123412341234",CIPHERTEXT="57475a4f836b31d5",KEYFROM="5678567856780000",KEYTO="5678567856790000" $(EXEC_PBS)
+
 endif
 
 
