@@ -24,14 +24,37 @@ uint64_t from_bytes(uint8_t from[8]) {
   return to;
 }
 
-void print_hex_text(const uint8_t *text, size_t size) {
-  for (int i = 0; i < size; i++) {
-    printf("%02x", text[i]);
-  }
-}
-
 int is2pow(int64_t x) {
   return x && !(x & (x - 1)) != 0;
 }
+
+const char * to_hex(const uint8_t *text, size_t size) {
+  static char hex[1024];
+  int i;
+  for (i = 0; i < size; i++) {
+    sprintf(hex + 2 * i, "%02x", text[i]);
+  }
+  hex[2 * i] = 0;
+  return hex;
+}
+
+int from_hex(uint8_t *bytes, char *hex) {
+  int len = strlen(optarg);
+  if (len % 2 != 0) {
+    return -1;
+  }
+
+  int text_size = len / 2;
+  for(int i = 0; i < text_size; i++) {
+    sscanf(hex + i * 2, "%2hhx", bytes + i);
+  }
+
+  return text_size;
+}
+
+#ifndef max
+#define max(a,b) (((a) > (b)) ? (a) : (b))
+#define min(a,b) (((a) < (b)) ? (a) : (b))
+#endif
 
 #endif
