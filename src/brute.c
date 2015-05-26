@@ -52,12 +52,14 @@ int64_t brute_search(const uint64_t key_from, const uint64_t key_to, uint64_t *k
 #ifdef USE_TOMCRYPT
     symmetric_key k;
     des_setup(key_bytes, 8, 0, &k);
-    des_ecb_decrypt(ciphertext, local_plaintext, &k);
+    for (int i = 0; i < byte_length; i += 8)
+      des_ecb_decrypt(ciphertext + i, local_plaintext + i, &k);
     des_done(&k);
 #elif USE_OPENSSL
     DES_key_schedule k;
     DES_set_key((const_DES_cblock *)key_bytes, &k);
-    DES_ecb_encrypt((DES_cblock *)ciphertext, (DES_cblock *)local_plaintext, &k, DES_DECRYPT);
+    for (int i = 0; i < byte_length; i += 8)
+      DES_ecb_encrypt((DES_cblock *)(ciphertext + i), (DES_cblock *)(local_plaintext + i), &k, DES_DECRYPT);
 #endif
 
     // XXX: this is where an heuristics would kick in, to evaluate if local_plaintext is a possible plaintext message
