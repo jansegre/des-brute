@@ -74,7 +74,9 @@ unfortunately using only 16 processes.
 
 These are the results:
 
-    TODO
+![Linear Time][image_eng.jpg]
+
+![Logarithmic Time][image_log_eng.jpg]
 
 ## License
 
