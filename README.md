@@ -74,9 +74,9 @@ unfortunately using only 16 processes.
 
 These are the results:
 
-![Linear Time][image_eng.jpg]
+![Linear Time][plot/image_eng.jpg]
 
-![Logarithmic Time][image_log_eng.jpg]
+![Logarithmic Time][plot/image_log_eng.jpg]
 
 ## License
 
